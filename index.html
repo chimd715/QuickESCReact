@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enter-Esc 반응 속도 테스트</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            transition: background-color 0.3s;
+        }
+        
+        .container {
+            text-align: center;
+            padding: 2rem;
+            border-radius: 10px;
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 90%;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 1.5rem;
+        }
+        
+        .instruction {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            color: #555;
+        }
+        
+        .result {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-top: 2rem;
+            color: #2c3e50;
+        }
+        
+        .history {
+            margin-top: 2rem;
+            text-align: left;
+            padding: 1rem;
+            background-color: #f8f8f8;
+            border-radius: 5px;
+            display: none;
+        }
+        
+        .history h3 {
+            margin-top: 0;
+        }
+        
+        .history ul {
+            padding-left: 1.5rem;
+        }
+        
+        .reset-btn {
+            margin-top: 2rem;
+            padding: 0.8rem 1.5rem;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+        }
+        
+        .reset-btn:hover {
+            background-color: #2980b9;
+        }
+
+        .waiting {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        .ready {
+            color: #27ae60;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="main-container">
+        <h1>반응 속도 테스트</h1>
+        <p class="instruction" id="instruction">시작하려면 <span class="ready">Enter</span> 키를 입력해주세요.</p>
+        <div class="result" id="result"></div>
+        <div class="history" id="history">
+            <h3>기록</h3>
+            <ul id="history-list"></ul>
+            <p>평균 반응 시간: <span id="average-time">0</span>ms</p>
+        </div>
+        <button class="reset-btn" id="reset-btn" style="display: none;">다시 시작</button>
+    </div>
+
+    <script>
+        const instruction = document.getElementById('instruction');
+        const result = document.getElementById('result');
+        const container = document.getElementById('main-container');
+        const body = document.body;
+        const resetBtn = document.getElementById('reset-btn');
+        const historyDiv = document.getElementById('history');
+        const historyList = document.getElementById('history-list');
+        const averageTime = document.getElementById('average-time');
+        
+        let state = 'waiting'; // waiting, ready, testing, finished
+        let startTime;
+        let reactionTimes = [];
+        let colorChangeTimeout;
+        
+        // 랜덤 색상 생성 함수
+        function getRandomColor() {
+            const colors = [
+                '#e74c3c', // 빨강
+                '#3498db', // 파랑
+                '#2ecc71', // 초록
+                '#f39c12', // 주황
+                '#9b59b6', // 보라
+                '#1abc9c', // 청록
+                '#e67e22'  // 주황빨강
+            ];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+        
+        // 랜덤 대기 시간 (1~3초)
+        function getRandomDelay() {
+            return Math.floor(Math.random() * 2000) + 1000;
+        }
+        
+        // 평균 계산
+        function calculateAverage() {
+            if (reactionTimes.length === 0) return 0;
+            const sum = reactionTimes.reduce((a, b) => a + b, 0);
+            return Math.round(sum / reactionTimes.length);
+        }
+        
+        // 기록 업데이트
+        function updateHistory() {
+            if (reactionTimes.length > 0) {
+                historyDiv.style.display = 'block';
+                historyList.innerHTML = '';
+                
+                reactionTimes.forEach((time, index) => {
+                    const li = document.createElement('li');
+                    li.textContent = `시도 ${index + 1}: ${time}ms`;
+                    historyList.appendChild(li);
+                });
+                
+                averageTime.textContent = calculateAverage();
+            }
+        }
+        
+        // 키보드 이벤트 처리
+        document.addEventListener('keydown', function(event) {
+            // Enter 키
+            if (event.key === 'Enter' && state === 'waiting') {
+                state = 'ready';
+                instruction.textContent = '화면 색상이 변경되면 Esc 키를 누르세요!';
+                instruction.classList.add('waiting');
+                
+                // 랜덤 시간 후 배경색 변경
+                colorChangeTimeout = setTimeout(() => {
+                    state = 'testing';
+                    body.style.backgroundColor = getRandomColor();
+                    instruction.textContent = 'Esc 키를 누르세요!';
+                    instruction.classList.remove('waiting');
+                    startTime = new Date().getTime();
+                }, getRandomDelay());
+            }
+            // Esc 키
+            else if (event.key === 'Escape') {
+                if (state === 'ready') {
+                    // 너무 일찍 Esc를 누른 경우
+                    clearTimeout(colorChangeTimeout);
+                    state = 'waiting';
+                    instruction.classList.remove('waiting');
+                    instruction.textContent = '너무 일찍 눌렀습니다! Enter 키를 다시 누르세요.';
+                }
+                else if (state === 'testing') {
+                    const endTime = new Date().getTime();
+                    const reactionTime = endTime - startTime;
+                    
+                    state = 'finished';
+                    body.style.backgroundColor = '#f0f0f0';
+                    instruction.textContent = '시작하려면 Enter 키를 입력해주세요.';
+                    result.textContent = `반응 시간: ${reactionTime}ms`;
+                    
+                    reactionTimes.push(reactionTime);
+                    updateHistory();
+                    resetBtn.style.display = 'inline-block';
+                }
+            }
+        });
+        
+        // 리셋 버튼 이벤트
+        resetBtn.addEventListener('click', function() {
+            state = 'waiting';
+            result.textContent = '';
+            instruction.textContent = '시작하려면 Enter 키를 입력해주세요.';
+            resetBtn.style.display = 'none';
+        });
+    </script>
+</body>
+</html>
