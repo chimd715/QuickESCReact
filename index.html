@@ -7,23 +7,59 @@
     <style>
         body {
             font-family: 'Arial', sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
             margin: 0;
-            background-color: #f0f0f0;
-            transition: background-color 0.3s;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+            background-color: #000000;
+        }
+        
+        .background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('resource/img/bg.jpg');
+            background-size: cover;
+            background-position: center;
+            z-index: -10;
+        }
+        
+        .image-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -5;
+            display: none;
+        }
+        
+        .test-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 0.1s;
         }
         
         .container {
+            position: relative;
+            z-index: 10;
             text-align: center;
             padding: 2rem;
             border-radius: 10px;
-            background-color: white;
+            background-color: rgba(255, 255, 255, 0.9);
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             max-width: 600px;
             width: 90%;
+            margin: 0 auto;
+            margin-top: 20vh;
+            transition: display 0.3s;
         }
         
         h1 {
@@ -94,6 +130,19 @@
     </style>
 </head>
 <body>
+    <div class="background"></div>
+    <audio id="background-music" loop autoplay>
+        <source src="resource/audio/bg.mp3" type="audio/mp3">
+    </audio>
+    <div class="image-container" id="image-container">
+        <img src="resource/img/1.jpg" class="test-image" id="img-1" alt="Test Image 1">
+        <img src="resource/img/2.jpg" class="test-image" id="img-2" alt="Test Image 2">
+        <img src="resource/img/3.jpg" class="test-image" id="img-3" alt="Test Image 3">
+        <img src="resource/img/4.jpg" class="test-image" id="img-4" alt="Test Image 4">
+        <img src="resource/img/5.jpg" class="test-image" id="img-5" alt="Test Image 5">
+        <img src="resource/img/6.jpg" class="test-image" id="img-6" alt="Test Image 6">
+    </div>
+    
     <div class="container" id="main-container">
         <h1>반응 속도 테스트</h1>
         <p class="instruction" id="instruction">시작하려면 <span class="ready">Enter</span> 키를 입력해주세요.</p>
@@ -107,32 +156,64 @@
     </div>
 
     <script>
+        // DOM 요소
         const instruction = document.getElementById('instruction');
         const result = document.getElementById('result');
         const container = document.getElementById('main-container');
-        const body = document.body;
         const resetBtn = document.getElementById('reset-btn');
         const historyDiv = document.getElementById('history');
         const historyList = document.getElementById('history-list');
         const averageTime = document.getElementById('average-time');
+        const imageContainer = document.getElementById('image-container');
+        const backgroundMusic = document.getElementById('background-music');
         
+        // 배경 음악 자동 재생 설정
+        window.addEventListener('load', function() {
+            // 일부 브라우저에서는 사용자 상호작용 없이 자동 재생이 제한될 수 있음
+            backgroundMusic.play().catch(function(error) {
+                console.log('자동 재생이 차단되었습니다:', error);
+                // Enter 키 이벤트에서 음악 재생을 시도합니다
+            });
+        });
+        
+        // 이미지 요소들을 배열로 저장
+        const images = [];
+        for (let i = 1; i <= 6; i++) {
+            images.push(document.getElementById(`img-${i}`));
+        }
+        
+        // 상태 변수
         let state = 'waiting'; // waiting, ready, testing, finished
         let startTime;
         let reactionTimes = [];
         let colorChangeTimeout;
+        let currentImage = null;
         
-        // 랜덤 색상 생성 함수
-        function getRandomColor() {
-            const colors = [
-                '#e74c3c', // 빨강
-                '#3498db', // 파랑
-                '#2ecc71', // 초록
-                '#f39c12', // 주황
-                '#9b59b6', // 보라
-                '#1abc9c', // 청록
-                '#e67e22'  // 주황빨강
-            ];
-            return colors[Math.floor(Math.random() * colors.length)];
+        // 랜덤 이미지 선택 함수
+        function showRandomImage() {
+            // 이전 이미지 숨기기
+            if (currentImage) {
+                currentImage.style.opacity = 0;
+            }
+            
+            // 랜덤 이미지 선택
+            const randomIndex = Math.floor(Math.random() * images.length);
+            currentImage = images[randomIndex];
+            
+            // 이미지 컨테이너 표시
+            imageContainer.style.display = 'block';
+            
+            // 선택된 이미지 표시
+            currentImage.style.opacity = 1;
+        }
+        
+        // 이미지 숨기기 함수
+        function hideImages() {
+            imageContainer.style.display = 'none';
+            if (currentImage) {
+                currentImage.style.opacity = 0;
+                currentImage = null;
+            }
         }
         
         // 랜덤 대기 시간 (1~3초)
@@ -163,20 +244,37 @@
             }
         }
         
+        // 이미지 미리 로드
+        function preloadImages() {
+            for (let i = 1; i <= 6; i++) {
+                const img = new Image();
+                img.src = `resource/img/${i}.jpg`;
+            }
+        }
+        
+        // 페이지 로드 시 이미지 미리 로드
+        window.addEventListener('load', preloadImages);
+        
         // 키보드 이벤트 처리
         document.addEventListener('keydown', function(event) {
             // Enter 키
             if (event.key === 'Enter' && state === 'waiting') {
                 state = 'ready';
-                instruction.textContent = '화면 색상이 변경되면 Esc 키를 누르세요!';
+                instruction.textContent = '화면 이미지가 변경되면 Esc 키를 누르세요!';
                 instruction.classList.add('waiting');
                 
-                // 랜덤 시간 후 배경색 변경
+                // 컨테이너 숨기기
+                container.style.display = 'none';
+                
+                // 음악 재생 시도 (자동 재생이 차단된 경우를 위해)
+                backgroundMusic.play().catch(function(error) {
+                    console.log('Enter 키로도 음악 재생이 차단되었습니다:', error);
+                });
+                
+                // 랜덤 시간 후 이미지 표시
                 colorChangeTimeout = setTimeout(() => {
                     state = 'testing';
-                    body.style.backgroundColor = getRandomColor();
-                    instruction.textContent = 'Esc 키를 누르세요!';
-                    instruction.classList.remove('waiting');
+                    showRandomImage();
                     startTime = new Date().getTime();
                 }, getRandomDelay());
             }
@@ -194,7 +292,11 @@
                     const reactionTime = endTime - startTime;
                     
                     state = 'finished';
-                    body.style.backgroundColor = '#f0f0f0';
+                    hideImages();
+                    
+                    // 컨테이너 다시 표시
+                    container.style.display = 'block';
+                    
                     instruction.textContent = '시작하려면 Enter 키를 입력해주세요.';
                     result.textContent = `반응 시간: ${reactionTime}ms`;
                     
